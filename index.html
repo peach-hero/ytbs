@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matched Betting Rechner</title>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --back-color: #60e6a4;
+            --lay-color: #79b7fc;
+            --dark-blue: #2c4a75;
+            --border-radius: 8px;
+            --primary-btn: #2c4a75;
+            --success-btn: #28a745;
+            --danger-btn: #dc3545;
+            --profit-green: #28a745;
+            --profit-red: #dc3545;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .calculator-container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Tabs Navigation */
+        .tabs {
+            display: flex;
+            background: #e4e7eb;
+            border-bottom: 2px solid #ccc;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 2px;
+            border: none;
+            background: none;
+            font-size: 13px;
+            font-weight: bold;
+            color: #666;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--card-bg);
+            color: var(--dark-blue);
+            border-bottom: 3px solid var(--dark-blue);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* General Sections */
+        .section { padding: 15px; margin-bottom: 2px; }
+        .section-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #1a365d; }
+
+        .mode-section { background-color: #fdfdfd; border-bottom: 1px solid #eaeaea; padding: 15px; }
+        .event-section { background-color: #f0f2f5; padding-top: 15px; }
+        .back-section { background-color: var(--back-color); }
+        .lay-section { background-color: var(--lay-color); }
+
+        /* Grid Layout */
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .full-width { grid-column: span 2; }
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+            outline: none;
+            color: #222;
+            background: #fff;
+        }
+
+        textarea { resize: vertical; min-height: 60px; }
+        
+        #backStake, #backOdds, #layOdds { background-color: #ffffff !important; border: 1px solid #aaa !important; }
+        #backStake::placeholder, #backOdds::placeholder, #layOdds::placeholder { color: #888; }
+        
+        .back-section select, .back-section input#backCommission { background-color: rgba(255,255,255,0.6); border: 1px solid #7bc69f; }
+        .lay-section input#layCommission { background-color: rgba(255,255,255,0.6); border: 1px solid #89a7d8; }
+        .unit-badge { position: absolute; right: 12px; font-size: 16px; font-weight: bold; color: #444; }
+
+        /* Radio Box Styles */
+        .radio-box {
+            display: flex; align-items: center; background: #fff;
+            padding: 10px; border-radius: 6px; border: 1px solid #d1d5db; width: 100%;
+        }
+        .radio-box-title { font-size: 14px; font-weight: bold; color: #1a365d; width: 60px; flex-shrink: 0; }
+        .radio-options { display: flex; flex: 1; justify-content: space-around; flex-wrap: wrap; gap: 8px; }
+        .radio-options label { display: flex; flex-direction: row; align-items: center; gap: 6px; cursor: pointer; font-weight: bold; font-size: 14px; color: #222; }
+        input[type="radio"], input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; margin: 0; }
+
+        /* Date Icon Button */
+        .date-icon-container { display: flex; flex-direction: column; align-items: center; margin-left: 8px; }
+        .date-icon-btn {
+            position: relative; width: 44px; height: 44px; background: #fff; border: 1px solid #ccc; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden; cursor: pointer;
+        }
+        .date-icon-btn input[type="date"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .date-display-text { font-size: 11px; color: #555; font-weight: bold; margin-top: 4px; text-align: center; }
+
+        /* Match Layout (Teams + Radios) */
+        .match-container { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+        .match-header-row { display: flex; width: 100%; align-items: center; }
+        .match-col-team { flex: 1; }
+        .match-col-team input { width: 100%; }
+        .match-col-vs { width: 24px; text-align: center; font-weight: bold; color: #555; }
+        .match-radio-row { display: flex; width: 100%; align-items: center; margin-bottom: 2px; }
+        .match-radio-col { flex: 1; display: flex; justify-content: center; }
+        .match-radio-vs { width: 24px; display: flex; justify-content: center; }
+        .match-radio-empty { width: 44px; margin-left: 8px; } 
+        .match-radio-col label, .match-radio-vs label { display: flex; align-items: center; gap: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
+
+        /* Result Bars & Tables */
+        .lay-stake-bar { background-color: var(--dark-blue); color: white; text-align: center; padding: 12px; font-weight: bold; font-size: 15px; }
+        .clickable-stake { cursor: pointer; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; transition: 0.2s; }
+        .clickable-stake:active { background: rgba(255,255,255,0.3); }
+
+        .breakdown-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #eceff1; }
+        .breakdown-table th { font-weight: normal; color: #555; padding: 8px 12px; text-align: right; }
+        .breakdown-table th:first-child { text-align: left; }
+        .breakdown-table td { padding: 10px 12px; text-align: right; font-weight: 500; }
+        
+        .row-title { text-align: left !important; font-weight: normal !important; }
+        .row-back-wins { background: #d1f7e3; }
+        .row-back-wins .label-cell { border-left: 15px solid var(--back-color); }
+        .row-lay-wins { background: #d7e9ff; }
+        .row-lay-wins .label-cell { border-left: 15px solid var(--lay-color); }
+
+        /* Profit Banner & Save Section */
+        .profit-banner { background: #f0f2f5; text-align: center; padding: 15px; font-size: 18px; font-weight: bold; color: #111; border-top: 1px solid #ddd; }
+        .profit-positive { color: var(--profit-green) !important; }
+        .profit-negative { color: var(--profit-red) !important; }
+        .save-section { background: #fff; padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: center; }
+
+        /* Rollover Settings */
+        .rollover-box { display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc; }
+        .rollover-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #1a365d; }
+        .rollover-result { font-size: 13px; margin-top: 10px; color: #555; background: #e9ecef; padding: 10px; border-radius: 6px; text-align: center; }
+
+        /* Buttons & Lists */
+        .btn { background: var(--primary-btn); color: white; border: none; padding: 12px; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; text-align: center; }
+        .btn-success { background: var(--success-btn); flex: 2; }
+        .btn-reset { background: #6c757d; flex: 1; }
+        .btn-secondary { background: #17a2b8; }
+        
+        .stammdaten-container { padding: 20px; }
+        .data-list-group { margin-top: 20px; list-style: none; padding: 0; max-height: 250px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; }
+        .data-item { background: #f9f9f9; padding: 10px 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        
+        .delete-btn { background: var(--danger-btn); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .delete-btn-small { background: none; border: none; font-size: 16px; cursor: pointer; color: #999; padding: 4px; border-radius: 4px; transition: 0.2s; }
+        .delete-btn-small:hover { color: var(--profit-red); background: #ffe6e6; }
+
+        /* Profitbuch Item Details */
+        .pb-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 3px; }
+        .pb-teams-title { font-size: 15px; color: #1a365d; font-weight: normal; flex: 1; padding-right: 5px; }
+        .pb-header-right { display: flex; align-items: center; gap: 10px; }
+        .pb-details { font-size: 13px; color: #333; margin-top: 0px; line-height: 1.5; }
+        .pb-meta-row { font-size: 11px; color: #777; margin-bottom: 4px; font-weight: 500; }
+        .clickable-profit { cursor: pointer; text-decoration: underline dotted; padding: 2px 4px; border-radius: 4px; transition: background 0.2s; }
+        .clickable-profit:hover { background: rgba(0,0,0,0.05); }
+
+        /* Quoten Ergebnisse */
+        .odds-result-card { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 12px; margin-bottom: 10px; font-size: 14px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.03);}
+        .odds-result-card strong { color: var(--dark-blue); font-size: 15px; display: block; margin-bottom: 4px;}
+        .odds-league { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;}
+        .odds-prices { display: flex; justify-content: space-between; margin-top: 10px; font-weight: bold; padding: 8px; background: #f9f9f9; border-radius: 4px; border: 1px solid #eee; }
+        .odds-prices-left { flex: 1; padding-right: 10px; border-right: 1px solid #e1e1e1; }
+        .odds-prices-right { flex: 1; padding-left: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .back-option-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px dashed #e1e1e1; padding-bottom: 3px; }
+        .back-option-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .odds-rating { text-align: center; margin-top: 10px; font-size: 16px; font-weight: bold; color: var(--primary-btn); }
+
+        /* Toast */
+        .toast {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 20px;
+            border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity 0.3s;
+            pointer-events: none; z-index: 10; white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+<datalist id="teamsDatalist"></datalist>
+
+<div class="calculator-container">
+    
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('rechner')">Rechner</button>
+        <button class="tab-btn" onclick="switchTab('profitbuch')">Profitbuch</button>
+        <button class="tab-btn" onclick="switchTab('quoten')">Quoten</button>
+        <button class="tab-btn" onclick="switchTab('stammdaten')">Stammdaten</button>
+    </div>
+
+    <div id="rechnerTab" class="tab-content active">
+        
+        <div class="mode-section">
+            <div class="radio-box">
+                <div class="radio-options">
+                    <label><input type="radio" name="betType" value="qualifying" checked onchange="toggleMode(); calculate()">Qualifying</label>
+                    <label><input type="radio" name="betType" value="freebet" onchange="toggleMode(); calculate()">Freebet</label>
+                    <label><input type="radio" name="betType" value="moneyback" onchange="toggleMode(); calculate()">Moneyback</label>
+                    <label><input type="radio" name="betType" value="rollover" onchange="toggleMode(); calculate()">Rollover</label>
+                </div>
+            </div>
+            
+            <div id="rolloverSettings" class="rollover-box">
+                <div class="rollover-title">Bonus-Prognose (Expected Value)</div>
+                <div class="input-grid">
+                    <div class="input-wrapper">
+                        <input type="number" id="bonusAmount" placeholder="Bonusbetrag (€)" step="any" oninput="calculate()">
+                    </div>
+                    <div class="input-wrapper">
+                        <input type="number" id="turnoverReq" placeholder="Umsatz gesamt (€)" step="any" oninput="calculate()">
+                    </div>
+                </div>
+                <div class="rollover-result">
+                    Erwarteter Profit: <strong id="rolloverEVDisplay" style="color: var(--dark-blue); font-size: 16px;">€ 0.00</strong><br>
+                    <span id="rolloverLossHint" style="font-size: 11px;">(Simulierter Q-Loss: 7.00% pro Wette)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section event-section">
+            <div class="input-grid">
+                <div class="input-wrapper full-width match-container">
+                    <div class="match-radio-row">
+                        <div class="match-radio-col"><label>1 <input type="radio" name="matchSelection" value="1"></label></div>
+                        <div class="match-radio-vs"><label>X <input type="radio" name="matchSelection" value="X"></label></div>
+                        <div class="match-radio-col"><label>2 <input type="radio" name="matchSelection" value="2"></label></div>
+                        <div class="match-radio-empty"></div>
+                    </div>
+                    <div class="match-header-row">
+                        <div class="match-col-team"><input type="text" id="team1" list="teamsDatalist" placeholder="Team 1"></div>
+                        <div class="match-col-vs">:</div>
+                        <div class="match-col-team"><input type="text" id="team2" list="teamsDatalist" placeholder="Team 2"></div>
+                        <div class="date-icon-container">
+                            <div class="date-icon-btn">
+                                📅
+                                <input type="date" id="eventDate" onchange="updateDateDisplay()">
+                            </div>
+                            <div id="dateDisplayLabel" class="date-display-text">Heute</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-wrapper full-width">
+                    <input type="text" id="eventBetType" placeholder="Wettart (z.B. Match Odds, Über 2.5 Tore)">
+                </div>
+
+                <div class="input-wrapper full-width radio-box">
+                    <div class="radio-box-title">Konto:</div>
+                    <div class="radio-options">
+                        <label>1 <input type="radio" name="kontoSelection" value="1" checked></label>
+                        <label>2 <input type="radio" name="kontoSelection" value="2"></label>
+                        <label>3 <input type="radio" name="kontoSelection" value="3"></label>
+                    </div>
+                </div>
+
+                <div class="input-wrapper full-width">
+                    <textarea id="betNotes" placeholder="Hinweistext / Notizen zur Wette..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="section back-section">
+            <div class="section-title">Back Bet (Bookie)</div>
+            <div class="input-grid">
+                <div class="input-wrapper full-width">
+                    <select id="bookieSelect" onchange="applyBookieTax()"><option value="">Bookie</option></select>
+                </div>
+                <div class="input-wrapper full-width">
+                    <input type="number" id="backStake" placeholder="Wetteinsatz (€)" step="any" oninput="calculate()">
+                </div>
+                <div class="input-wrapper">
+                    <input type="number" id="backOdds" placeholder="Back Odds" step="any" oninput="calculate()">
+                </div>
+                <div class="input-wrapper">
+                    <input type="number" id="backCommission" placeholder="Steuer %" value="0" step="any" oninput="calculate()">
+                    <span class="unit-badge">%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section lay-section">
+            <div class="section-title">Lay Bet</div>
+            <div class="input-grid">
+                <div class="input-wrapper">
+                    <input type="number" id="layOdds" placeholder="Lay odds" step="any" oninput="calculate()">
+                </div>
+                <div class="input-wrapper">
+                    <input type="number" id="layCommission" placeholder="Lay commission" step="any" value="0" oninput="calculate()">
+                    <span class="unit-badge">%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="lay-stake-bar">
+            Lay: <span id="layStakeResult" class="clickable-stake" onclick="copyLayStake()" title="Kopieren">€ 0.00</span>
+        </div>
+
+        <table class="breakdown-table">
+            <thead>
+                <tr><th></th><th>Bookie</th><th>Exchange</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+                <tr class="row-back-wins">
+                    <td class="row-title label-cell">If <strong>back</strong> bet wins</td>
+                    <td id="tableBookieBackWins">€ 0.00</td>
+                    <td id="tableExchangeBackWins">€ 0.00</td>
+                    <td id="tableTotalBackWins" style="font-weight: bold;">= € 0.00</td>
+                </tr>
+                <tr class="row-lay-wins">
+                    <td class="row-title label-cell">If <strong>lay</strong> bet wins</td>
+                    <td id="tableBookieLayWins">€ 0.00</td>
+                    <td id="tableExchangeLayWins">€ 0.00</td>
+                    <td id="tableTotalLayWins" style="font-weight: bold;">= € 0.00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="profit-banner">
+            Total profit: <span id="totalProfitResult" data-raw="0">€ 0.00</span>
+        </div>
+
+        <div class="save-section">
+            <button class="btn btn-reset" onclick="resetForm()">Reset</button>
+            <button class="btn btn-success" onclick="saveToProfitBook()">Ins Profitbuch speichern</button>
+        </div>
+    </div>
+
+    <div id="profitbuchTab" class="tab-content stammdaten-container">
+        <h2 style="margin-bottom: 15px; color: var(--dark-blue);">Profitbuch</h2>
+        <div class="input-grid" style="margin-bottom: 15px;">
+            <div class="input-wrapper"><select id="filterYear" onchange="renderProfitBook()"></select></div>
+            <div class="input-wrapper">
+                <select id="filterMonth" onchange="renderProfitBook()">
+                    <option value="01">Januar</option><option value="02">Februar</option>
+                    <option value="03">März</option><option value="04">April</option>
+                    <option value="05">Mai</option><option value="06">Juni</option>
+                    <option value="07">Juli</option><option value="08">August</option>
+                    <option value="09">September</option><option value="10">Oktober</option>
+                    <option value="11">November</option><option value="12">Dezember</option>
+                </select>
+            </div>
+        </div>
+        <div class="profit-banner" style="border-radius: 6px; margin-bottom: 15px;">
+            Monatsprofit: <br> <span id="monthProfitDisplay">€ 0.00</span>
+        </div>
+        <ul id="profitBookList" class="data-list-group" style="margin-top: 0; max-height: 350px; overflow-y: auto;"></ul>
+    </div>
+
+    <div id="quotenTab" class="tab-content stammdaten-container">
+        <h2 style="margin-bottom: 15px; color: var(--dark-blue);">Quotensuche</h2>
+        <div class="input-grid" style="margin-bottom: 15px;">
+            
+            <div class="input-wrapper full-width">
+                <select id="searchLeagueFilter">
+                    <option value="ALL">Alle unterstützen Ligen & Turniere</option>
+                    <option value="soccer_germany_bundesliga">🇩🇪 1. Bundesliga</option>
+                    <option value="soccer_germany_bundesliga2">🇩🇪 2. Bundesliga</option>
+                    <option value="soccer_epl">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</option>
+                    <option value="soccer_efl_championship">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Championship (ENG)</option>
+                    <option value="soccer_spain_la_liga">🇪🇸 La Liga</option>
+                    <option value="soccer_spain_segunda_division">🇪🇸 Segunda División</option>
+                    <option value="soccer_italy_serie_a">🇮🇹 Serie A</option>
+                    <option value="soccer_turkey_super_league">🇹🇷 Süper Lig</option>
+                    <option value="soccer_portugal_primeira_liga">🇵🇹 Primeira Liga</option>
+                    <option value="soccer_netherlands_eredivisie">🇳🇱 Eredivisie</option>
+                    <option value="soccer_uefa_champs_league">🇪🇺 Champions League</option>
+                    <option value="soccer_uefa_europa_league">🇪🇺 Europa League</option>
+                    <option value="soccer_uefa_europa_conference_league">🇪🇺 Conference League</option>
+                    <option value="soccer_fifa_world_cup">🌍 World Cup / Quali</option>
+                    <option value="soccer_uefa_european_championship">🇪🇺 EM / Quali</option>
+                    <option value="soccer_uefa_nations_league">🇪🇺 Nations League</option>
+                </select>
+            </div>
+
+            <div class="input-wrapper full-width">
+                <input type="text" id="searchTeamInput" list="teamsDatalist" placeholder="Team (Optional, z.B. Bayern)">
+            </div>
+            
+            <div class="input-wrapper full-width radio-box" style="justify-content: center; padding: 12px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--dark-blue);">
+                    <input type="checkbox" id="stammdatenBookieToggle">
+                    <strong>Nur meine Stammdaten-Bookies</strong>
+                </label>
+            </div>
+
+            <button class="btn full-width" onclick="fetchLiveOdds(false)">Gezielt Suchen</button>
+            <button class="btn btn-secondary full-width" onclick="fetchLiveOdds(true)">Top-Quoten (Liga/Alle)</button>
+        </div>
+        
+        <div id="oddsResultsContainer" style="margin-top: 20px;">
+            <p style="text-align: center; color: #777; font-size: 13px; margin-top: 30px;">
+                Wähle eine Liga oder suche nach einem Team.
+            </p>
+        </div>
+    </div>
+
+    <div id="stammdatenTab" class="tab-content stammdaten-container">
+        <h2 style="margin-bottom: 15px; color: var(--dark-blue);">Bookies verwalten</h2>
+        <div class="input-grid" style="margin-bottom: 15px;">
+            <div class="input-wrapper"><input type="text" id="newBookieName" placeholder="Bookie Name"></div>
+            <div class="input-wrapper">
+                <input type="number" id="newBookieTax" placeholder="Steuer %" step="any">
+                <span class="unit-badge">%</span>
+            </div>
+            <button class="btn full-width" onclick="addBookie()">Bookie hinzufügen</button>
+        </div>
+        <ul id="bookieList" class="data-list-group" style="margin-bottom: 30px;"></ul>
+
+        <hr style="border: 0; border-top: 1px solid #ddd; margin-bottom: 20px;">
+
+        <h2 style="margin-bottom: 15px; color: var(--dark-blue);">Teams verwalten</h2>
+        <div class="input-grid" style="margin-bottom: 15px;">
+            <div class="input-wrapper full-width">
+                <input type="text" id="newTeamName" placeholder="Team Name (z.B. Arsenal FC)">
+            </div>
+            <button class="btn full-width" onclick="addTeam()">Team hinzufügen</button>
+        </div>
+        <ul id="teamsListUI" class="data-list-group"></ul>
+    </div>
+
+    <div id="toast" class="toast">Nachricht</div>
+</div>
+
+<script>
+    const dateInput = document.getElementById('eventDate');
+    const dateLabel = document.getElementById('dateDisplayLabel');
+    dateInput.valueAsDate = new Date();
+
+    function updateDateDisplay() {
+        if (!dateInput.value) return;
+        const selected = new Date(dateInput.value);
+        const today = new Date();
+        if (selected.toDateString() === today.toDateString()) {
+            dateLabel.innerText = "Heute";
+        } else {
+            dateLabel.innerText = `${String(selected.getDate()).padStart(2, '0')}.${String(selected.getMonth() + 1).padStart(2, '0')}.`;
+        }
+    }
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+        if (tabName === 'rechner') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active'); document.getElementById('rechnerTab').classList.add('active');
+        } else if (tabName === 'profitbuch') {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active'); document.getElementById('profitbuchTab').classList.add('active'); renderProfitBook();
+        } else if (tabName === 'quoten') {
+            document.querySelectorAll('.tab-btn')[2].classList.add('active'); document.getElementById('quotenTab').classList.add('active');
+        } else {
+            document.querySelectorAll('.tab-btn')[3].classList.add('active'); document.getElementById('stammdatenTab').classList.add('active');
+        }
+    }
+
+    function toggleMode() {
+        const mode = document.querySelector('input[name="betType"]:checked').value;
+        document.getElementById('rolloverSettings').style.display = (mode === 'rollover') ? 'block' : 'none';
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.innerText = message; toast.style.opacity = '1';
+        setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+    }
+
+    /* ==============================
+       Stammdaten: Bookies & Teams
+       ============================== */
+    let bookies = JSON.parse(localStorage.getItem('mb_bookies')) || [
+        { id: 1, name: "Bet365", tax: 5.3 }, { id: 2, name: "Tipico", tax: 0 }, 
+        { id: 3, name: "Bwin", tax: 5.3 }, { id: 4, name: "Betway", tax: 5.3 }, 
+        { id: 5, name: "888sport", tax: 5.3 }, { id: 6, name: "Unibet", tax: 5.3 }, 
+        { id: 7, name: "Bet-at-home", tax: 5.3 }, { id: 8, name: "BetVictor", tax: 5.3 }, 
+        { id: 9, name: "Interwetten", tax: 5.3 }, { id: 10, name: "Betano", tax: 5.3 }, 
+        { id: 11, name: "Winamax", tax: 0 }, { id: 12, name: "Sportingbet", tax: 5.3 }, 
+        { id: 13, name: "NEO.bet", tax: 0 }, { id: 14, name: "AdmiralBet", tax: 5.3 }, 
+        { id: 15, name: "Merkur Sports", tax: 5.3 }, { id: 16, name: "Bet3000", tax: 0 }, 
+        { id: 17, name: "BildBet", tax: 5.3 }, { id: 18, name: "CrazyBuzzer", tax: 5.3 }
+    ];
+    let teamsData = JSON.parse(localStorage.getItem('mb_teams')) || [
+        { id: 1, name: "Deutschland" }, { id: 2, name: "Frankreich" }, { id: 3, name: "Spanien" }, { id: 4, name: "England" }, { id: 5, name: "Italien" }, 
+        { id: 6, name: "Bayern München" }, { id: 7, name: "Borussia Dortmund" }, { id: 8, name: "Bayer Leverkusen" }, { id: 9, name: "Real Madrid" }, 
+        { id: 10, name: "FC Barcelona" }, { id: 11, name: "Manchester City" }, { id: 12, name: "Liverpool FC" }, { id: 13, name: "Arsenal" }, 
+        { id: 14, name: "Paris Saint-Germain" }, { id: 15, name: "Juventus" }
+    ];
+
+    function saveBookies() { localStorage.setItem('mb_bookies', JSON.stringify(bookies)); renderBookiesList(); updateBookieDropdown(); }
+    function saveTeams() { localStorage.setItem('mb_teams', JSON.stringify(teamsData)); renderTeamsList(); updateTeamsDatalist(); }
+
+    function addBookie() {
+        const name = document.getElementById('newBookieName').value.trim();
+        const tax = parseFloat(document.getElementById('newBookieTax').value) || 0;
+        if (name !== "") {
+            bookies.push({ id: Date.now(), name: name, tax: tax });
+            document.getElementById('newBookieName').value = ""; document.getElementById('newBookieTax').value = "";
+            saveBookies(); showToast("Bookie hinzugefügt!");
+        }
+    }
+    function addTeam() {
+        const name = document.getElementById('newTeamName').value.trim();
+        if (name !== "" && !teamsData.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+            teamsData.push({ id: Date.now(), name: name }); document.getElementById('newTeamName').value = "";
+            saveTeams(); showToast("Team hinzugefügt!");
+        }
+    }
+
+    function deleteBookie(id) { bookies = bookies.filter(b => b.id !== id); saveBookies(); }
+    function deleteTeam(id) { teamsData = teamsData.filter(t => t.id !== id); saveTeams(); }
+
+    function renderBookiesList() {
+        const list = document.getElementById('bookieList'); list.innerHTML = "";
+        bookies.forEach(bookie => {
+            const li = document.createElement('li'); li.className = 'data-item';
+            li.innerHTML = `<div><strong>${bookie.name}</strong> (Steuer: ${bookie.tax}%)</div><button class="delete-btn" onclick="deleteBookie(${bookie.id})">X</button>`;
+            list.appendChild(li);
+        });
+    }
+    function renderTeamsList() {
+        const list = document.getElementById('teamsListUI'); list.innerHTML = "";
+        teamsData.sort((a,b) => a.name.localeCompare(b.name)).forEach(team => {
+            const li = document.createElement('li'); li.className = 'data-item';
+            li.innerHTML = `<div><strong>${team.name}</strong></div><button class="delete-btn" onclick="deleteTeam(${team.id})">X</button>`;
+            list.appendChild(li);
+        });
+    }
+    function updateBookieDropdown() {
+        const select = document.getElementById('bookieSelect'); select.innerHTML = '<option value="">Bookie</option>';
+        bookies.forEach(bookie => {
+            const option = document.createElement('option');
+            option.value = bookie.name; option.dataset.tax = bookie.tax; option.innerText = `${bookie.name} (${bookie.tax}%)`;
+            select.appendChild(option);
+        });
+    }
+    function updateTeamsDatalist() {
+        const datalist = document.getElementById('teamsDatalist'); datalist.innerHTML = "";
+        teamsData.forEach(team => { const option = document.createElement('option'); option.value = team.name; datalist.appendChild(option); });
+    }
+    function applyBookieTax() {
+        const select = document.getElementById('bookieSelect'); const taxInput = document.getElementById('backCommission');
+        if (select.selectedIndex > 0) { taxInput.value = select.options[select.selectedIndex].dataset.tax; }
+        calculate();
+    }
+
+    /* ==============================
+       Rechner-Logik & EV
+       ============================== */
+    function resetForm() {
+        document.getElementById('team1').value = ""; document.getElementById('team2').value = "";
+        document.getElementById('eventBetType').value = ""; document.getElementById('betNotes').value = "";
+        document.getElementById('backStake').value = ""; document.getElementById('backOdds').value = "";
+        document.getElementById('layOdds').value = ""; document.getElementById('bookieSelect').selectedIndex = 0;
+        document.querySelectorAll('input[name="matchSelection"]').forEach(radio => radio.checked = false);
+        document.getElementById('layCommission').value = "0"; document.getElementById('backCommission').value = "0";
+        document.getElementById('bonusAmount').value = ""; document.getElementById('turnoverReq').value = "";
+        document.getElementById('eventDate').valueAsDate = new Date(); updateDateDisplay();
+        document.querySelector('input[name="betType"][value="qualifying"]').checked = true;
+        document.querySelector('input[name="kontoSelection"][value="1"]').checked = true;
+        toggleMode(); resetOutputs(); showToast("Eingaben zurückgesetzt");
+    }
+
+    function calculate() {
+        const mode = document.querySelector('input[name="betType"]:checked').value;
+        const backStake = parseFloat(document.getElementById('backStake').value) || 0;
+        const backOdds = parseFloat(document.getElementById('backOdds').value) || 0;
+        const backCommission = (parseFloat(document.getElementById('backCommission').value) || 0) / 100;
+        const layOdds = parseFloat(document.getElementById('layOdds').value) || 0;
+        const layCommission = (parseFloat(document.getElementById('layCommission').value) || 0) / 100;
+
+        let layStake = 0;
+        if (mode === 'qualifying' || mode === 'moneyback' || mode === 'rollover') { 
+            if (layOdds - layCommission > 0) layStake = (backOdds * backStake) / (layOdds - layCommission); 
+        } else if (mode === 'freebet') { 
+            if (layOdds - layCommission > 0) layStake = ((backOdds - 1) * backStake) / (layOdds - layCommission); 
+        }
+
+        const bookieProfitIfBackWins = backStake * (backOdds - 1) * (1 - backCommission) - (backStake * backCommission);
+        const exchangeLossIfBackWins = -layStake * (layOdds - 1);
+        const totalIfBackWins = bookieProfitIfBackWins + exchangeLossIfBackWins;
+
+        const bookieLossIfLayWins = -backStake;
+        const exchangeProfitIfLayWins = layStake * (1 - layCommission);
+        const totalIfLayWins = bookieLossIfLayWins + exchangeProfitIfLayWins;
+        const totalProfit = totalIfBackWins; 
+
+        if (mode === 'rollover') {
+            const bonus = parseFloat(document.getElementById('bonusAmount').value) || 0;
+            const turnover = parseFloat(document.getElementById('turnoverReq').value) || 0;
+            let qLossPercent = 0.07; 
+            if (backStake > 0 && layStake > 0) { qLossPercent = Math.abs(totalProfit) / backStake; }
+            const expectedProfit = bonus - (turnover * qLossPercent);
+            const evDisplay = document.getElementById('rolloverEVDisplay');
+            evDisplay.innerText = `€ ${expectedProfit.toFixed(2)}`;
+            evDisplay.style.color = expectedProfit > 0 ? 'var(--profit-green)' : 'var(--profit-red)';
+            document.getElementById('rolloverLossHint').innerText = `(Simulierter Q-Loss: ${(qLossPercent*100).toFixed(2)}% pro Wette)`;
+        }
+
+        if (backStake <= 0 || backOdds <= 0 || layOdds <= 0) { resetOutputs(mode === 'rollover'); return; }
+
+        document.getElementById('layStakeResult').innerText = `€ ${layStake.toFixed(2)}`; document.getElementById('layStakeResult').setAttribute('data-raw', layStake.toFixed(2));
+        document.getElementById('tableBookieBackWins').innerText = `€ ${bookieProfitIfBackWins.toFixed(2)}`; document.getElementById('tableExchangeBackWins').innerText = `€ ${exchangeLossIfBackWins.toFixed(2)}`;
+        document.getElementById('tableTotalBackWins').innerText = `= € ${totalIfBackWins.toFixed(2)}`;
+        document.getElementById('tableBookieLayWins').innerText = `€ ${bookieLossIfLayWins.toFixed(2)}`; document.getElementById('tableExchangeLayWins').innerText = `€ ${exchangeProfitIfLayWins.toFixed(2)}`;
+        document.getElementById('tableTotalLayWins').innerText = `= € ${totalIfLayWins.toFixed(2)}`;
+
+        const profitBannerSpan = document.getElementById('totalProfitResult');
+        profitBannerSpan.innerText = `€ ${totalProfit.toFixed(2)}`; profitBannerSpan.setAttribute('data-raw', totalProfit.toFixed(2));
+        profitBannerSpan.classList.remove('profit-positive', 'profit-negative');
+        if (totalProfit > 0) profitBannerSpan.classList.add('profit-positive'); else if (totalProfit < 0) profitBannerSpan.classList.add('profit-negative');
+    }
+
+    function resetOutputs(keepEV = false) {
+        document.getElementById('layStakeResult').innerText = "€ 0.00"; document.getElementById('layStakeResult').setAttribute('data-raw', "0.00");
+        document.getElementById('tableBookieBackWins').innerText = "€ 0.00"; document.getElementById('tableExchangeBackWins').innerText = "€ 0.00";
+        document.getElementById('tableTotalBackWins').innerText = "= € 0.00"; document.getElementById('tableBookieLayWins').innerText = "€ 0.00";
+        document.getElementById('tableExchangeLayWins').innerText = "€ 0.00"; document.getElementById('tableTotalLayWins').innerText = "= € 0.00";
+        const profitBannerSpan = document.getElementById('totalProfitResult');
+        profitBannerSpan.innerText = "€ 0.00"; profitBannerSpan.setAttribute('data-raw', "0");
+        profitBannerSpan.classList.remove('profit-positive', 'profit-negative');
+        if(!keepEV) {
+            document.getElementById('rolloverEVDisplay').innerText = "€ 0.00"; document.getElementById('rolloverEVDisplay').style.color = "var(--dark-blue)";
+            document.getElementById('rolloverLossHint').innerText = "(Simulierter Q-Loss: 7.00% pro Wette)";
+        }
+    }
+
+    function copyLayStake() {
+        const rawValue = document.getElementById('layStakeResult').getAttribute('data-raw');
+        if (!rawValue || rawValue === "0.00") return;
+        navigator.clipboard.writeText(rawValue).then(() => showToast(`€ ${rawValue} kopiert!`));
+    }
+
+    /* ==============================
+       Profitbuch Logik
+       ============================== */
+    let profitBook = JSON.parse(localStorage.getItem('mb_profitbook')) || [];
+
+    function saveToProfitBook() {
+        const date = document.getElementById('eventDate').value;
+        const team1 = document.getElementById('team1').value.trim(); 
+        const team2 = document.getElementById('team2').value.trim();
+        const betType = document.getElementById('eventBetType').value.trim();
+        const matchSelectionRadio = document.querySelector('input[name="matchSelection"]:checked');
+        const matchSelection = matchSelectionRadio ? matchSelectionRadio.value : "-";
+        const kontoSelection = document.querySelector('input[name="kontoSelection"]:checked').value;
+        const notes = document.getElementById('betNotes').value.trim();
+        const profit = parseFloat(document.getElementById('totalProfitResult').getAttribute('data-raw')) || 0;
+        
+        const bookieSelect = document.getElementById('bookieSelect');
+        const bookieName = bookieSelect.selectedIndex > 0 ? bookieSelect.value : "";
+
+        if (!date) { alert("Bitte ein Datum auswählen!"); return; }
+
+        let formattedTeams = "";
+        
+        // NEU: Wenn keine Teams eingetragen sind, bleibt das Feld einfach komplett leer
+        if (team1 !== "" || team2 !== "") {
+            let t1Display = team1 || "?"; 
+            let t2Display = team2 || "?";
+            if (matchSelection === '1') { formattedTeams = `<strong>${t1Display}</strong> vs ${t2Display}`; } 
+            else if (matchSelection === '2') { formattedTeams = `${t1Display} vs <strong>${t2Display}</strong>`; } 
+            else if (matchSelection === 'X') { formattedTeams = `${t1Display} <strong>vs (Unentschieden)</strong> ${t2Display}`; }
+            else { formattedTeams = `${t1Display} vs ${t2Display}`; }
+        }
+
+        const newEntry = { id: Date.now(), date: date, teamsFormatted: formattedTeams, betType: betType, bookie: bookieName, konto: kontoSelection, notes: notes, profit: profit };
+        profitBook.push(newEntry); localStorage.setItem('mb_profitbook', JSON.stringify(profitBook));
+        
+        showToast("Im Profitbuch gespeichert!");
+        document.getElementById('team1').value = ""; document.getElementById('team2').value = "";
+        document.getElementById('eventBetType').value = ""; document.getElementById('betNotes').value = "";
+        document.querySelectorAll('input[name="matchSelection"]').forEach(r => r.checked = false);
+        initProfitBookFilters();
+    }
+
+    function deleteProfitEntry(id) {
+        if(confirm("Diesen Eintrag wirklich löschen?")) {
+            profitBook = profitBook.filter(entry => entry.id !== id);
+            localStorage.setItem('mb_profitbook', JSON.stringify(profitBook)); renderProfitBook();
+        }
+    }
+
+    function editProfitEntry(id) {
+        const entryIndex = profitBook.findIndex(e => e.id === id);
+        if(entryIndex > -1) {
+            const currentProfit = profitBook[entryIndex].profit;
+            const newProfitStr = prompt("Neuen Profit für diesen Eintrag eingeben (in €):", currentProfit.toFixed(2));
+            if (newProfitStr !== null) {
+                const newProfit = parseFloat(newProfitStr.replace(',', '.'));
+                if (!isNaN(newProfit)) {
+                    profitBook[entryIndex].profit = newProfit;
+                    localStorage.setItem('mb_profitbook', JSON.stringify(profitBook));
+                    renderProfitBook(); showToast("Profit aktualisiert!");
+                } else { alert("Bitte eine gültige Zahl eingeben."); }
+            }
+        }
+    }
+
+    function initProfitBookFilters() {
+        const yearSelect = document.getElementById('filterYear'); const monthSelect = document.getElementById('filterMonth');
+        const years = new Set(profitBook.map(entry => entry.date.substring(0, 4)));
+        const currentYear = new Date().getFullYear().toString(); years.add(currentYear); 
+        yearSelect.innerHTML = ""; Array.from(years).sort().reverse().forEach(year => { const option = document.createElement('option'); option.value = year; option.innerText = year; yearSelect.appendChild(option); });
+        const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
+        monthSelect.value = currentMonth; yearSelect.value = currentYear;
+    }
+
+    function renderProfitBook() {
+        const year = document.getElementById('filterYear').value; const month = document.getElementById('filterMonth').value;
+        const list = document.getElementById('profitBookList'); const monthProfitDisplay = document.getElementById('monthProfitDisplay');
+        
+        list.innerHTML = ""; let monthTotal = 0;
+        const filterString = `${year}-${month}`;
+        const filteredEntries = profitBook.filter(entry => entry.date.startsWith(filterString));
+        filteredEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (filteredEntries.length === 0) { list.innerHTML = "<p style='text-align:center; color:#777; font-size: 14px; padding: 20px;'>Keine Einträge in diesem Monat.</p>"; } 
+        else {
+            filteredEntries.forEach(entry => {
+                monthTotal += entry.profit;
+                const dateParts = entry.date.split('-'); const displayDate = `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`;
+                const profitColor = entry.profit > 0 ? 'var(--profit-green)' : (entry.profit < 0 ? 'var(--profit-red)' : '#111');
+                
+                let detailsHtml = "";
+                if (entry.betType) detailsHtml += `<div style="margin-top: 2px;">Art: ${entry.betType}</div>`;
+                if (entry.notes) detailsHtml += `<div style="margin-top: 2px; color: #666;"><em>Notiz: ${entry.notes}</em></div>`;
+                
+                const bookieString = entry.bookie ? ` | ${entry.bookie}` : "";
+                
+                // Leeres Team-Feld gar nicht erst als Platzhalter ins HTML rendern
+                const teamsHtml = entry.teamsFormatted ? `<span class="pb-teams-title">${entry.teamsFormatted}</span>` : `<span class="pb-teams-title"></span>`;
+
+                const li = document.createElement('li'); li.className = 'data-item'; li.style.display = 'block';
+                li.innerHTML = `
+                    <div class="pb-header">
+                        ${teamsHtml}
+                        <div class="pb-header-right">
+                            <span class="pb-profit clickable-profit" style="color: ${profitColor};" onclick="editProfitEntry(${entry.id})" title="Profit ändern">€ ${entry.profit.toFixed(2)}</span>
+                            <button class="delete-btn-small" onclick="deleteProfitEntry(${entry.id})" title="Eintrag löschen">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="pb-details">
+                        <div class="pb-meta-row">${displayDate} | ${entry.konto}${bookieString}</div>
+                        ${detailsHtml}
+                    </div>`;
+                list.appendChild(li);
+            });
+        }
+        monthProfitDisplay.innerText = `€ ${monthTotal.toFixed(2)}`;
+        monthProfitDisplay.classList.remove('profit-positive', 'profit-negative');
+        if (monthTotal > 0) monthProfitDisplay.classList.add('profit-positive'); else if (monthTotal < 0) monthProfitDisplay.classList.add('profit-negative');
+    }
+
+    /* ==============================
+       THE ODDS API (LIVE QUOTEN)
+       ============================== */
+    const ODDS_API_KEY = '24d16537ebe27eb5955864577df88827';
+    const EXCHANGES = ['betfair_ex_eu', 'betfair_ex_uk', 'matchbook', 'smarkets'];
+    
+    const GERMAN_BOOKIES = [
+        'bet365', 'bwin', 'betway', '888sport', 'unibet_eu', 'unibet',
+        'bet_at_home', 'betvictor', 'interwetten', 'tipico', 'betano', 
+        'winamax', 'sportingbet', 'neo_bet', 'admiralbet', 'merkur_sports', 
+        'bet3000', 'bildbet', 'crazybuzzer'
+    ];
+
+    const ALL_SUPPORTED_LEAGUES = [
+        'soccer_germany_bundesliga', 'soccer_germany_bundesliga2',
+        'soccer_epl', 'soccer_efl_championship',
+        'soccer_spain_la_liga', 'soccer_spain_segunda_division',
+        'soccer_italy_serie_a',
+        'soccer_turkey_super_league', 'soccer_portugal_primeira_liga', 'soccer_netherlands_eredivisie',
+        'soccer_uefa_champs_league', 'soccer_uefa_europa_league', 'soccer_uefa_europa_conference_league',
+        'soccer_fifa_world_cup', 'soccer_uefa_european_championship', 'soccer_uefa_nations_league', 
+        'soccer_afcon', 'soccer_asian_cup'
+    ];
+
+    async function fetchLiveOdds(isGeneral) {
+        const container = document.getElementById('oddsResultsContainer');
+        const teamSearch = document.getElementById('searchTeamInput').value.toLowerCase().trim();
+        const useStammdatenOnly = document.getElementById('stammdatenBookieToggle').checked;
+        const leagueFilter = document.getElementById('searchLeagueFilter').value;
+        
+        if (!isGeneral && teamSearch === "" && leagueFilter === "ALL") {
+            container.innerHTML = '<p style="color: red; text-align: center;">Bitte wähle ein Team oder eine spezifische Liga.</p>';
+            return;
+        }
+
+        container.innerHTML = '<p style="text-align: center; font-size: 14px; color: #555;">Frage aktive Ligen ab... ⏳</p>';
+
+        try {
+            const sportsRes = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${ODDS_API_KEY}`);
+            if (!sportsRes.ok) throw new Error("API-Verbindung fehlgeschlagen (Key/Limit prüfen).");
+            const activeSports = await sportsRes.json();
+
+            let targetLeaguesArray = (leagueFilter === "ALL") ? ALL_SUPPORTED_LEAGUES : [leagueFilter];
+            const sportsToFetch = activeSports.filter(s => targetLeaguesArray.includes(s.key)).map(s => s.key);
+
+            if(sportsToFetch.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #777;">Die gewählte(n) Liga/Ligen pausieren aktuell.</p>';
+                return;
+            }
+
+            container.innerHTML = `<p style="text-align: center; font-size: 14px; color: #555;">Lade Quoten aus ${sportsToFetch.length} Liga/Ligen... ⏳</p>`;
+
+            const oddsPromises = sportsToFetch.map(sportKey =>
+                fetch(`https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?regions=eu,uk&markets=h2h&apiKey=${ODDS_API_KEY}`)
+                .then(res => res.json())
+                .catch(err => []) 
+            );
+
+            const resultsArray = await Promise.all(oddsPromises);
+            const allEvents = resultsArray.flat();
+
+            let matchesFound = [];
+
+            allEvents.forEach(event => {
+                if (event.message) return; 
+                if (teamSearch !== "") {
+                    if (!event.home_team.toLowerCase().includes(teamSearch) && !event.away_team.toLowerCase().includes(teamSearch)) {
+                        return; 
+                    }
+                }
+                let bestBet = findBestArbitrage(event, useStammdatenOnly);
+                if (bestBet) matchesFound.push(bestBet);
+            });
+
+            matchesFound.sort((a, b) => b.rating - a.rating);
+
+            if (matchesFound.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #777;">Keine passenden Live-Quoten mit diesen Filter-Einstellungen gefunden.</p>';
+            } else {
+                container.innerHTML = "";
+                matchesFound.slice(0, 15).forEach(match => {
+                    let ratingColor = match.rating > 98 ? 'var(--profit-green)' : (match.rating > 95 ? 'var(--dark-blue)' : 'var(--danger-btn)');
+                    const backOptionsHtml = match.backOptions.map(opt => `
+                        <div class="back-option-row">
+                            <span style="font-size: 13px; color: #444;">${opt.bookie}</span>
+                            <strong style="color: var(--success-btn); font-size: 14px;">${opt.price.toFixed(2)}</strong>
+                        </div>
+                    `).join('');
+
+                    container.innerHTML += `
+                        <div class="odds-result-card">
+                            <span class="odds-league">${match.sportTitle}</span>
+                            <strong>${match.event}</strong>
+                            <div style="font-size: 13px; color: #555;">Tipp: ${match.outcome}</div>
+                            
+                            <div class="odds-prices">
+                                <div class="odds-prices-left">
+                                    <div style="color: #666; font-size: 11px; margin-bottom: 6px;">BACK VERGLEICH</div>
+                                    ${backOptionsHtml}
+                                </div>
+                                <div class="odds-prices-right">
+                                    <span style="color: #666; font-size: 11px; margin-bottom: 6px;">BESTES LAY</span>
+                                    <span style="font-size: 13px; color: #444;">${match.layBookie}</span>
+                                    <span style="color: var(--danger-btn); font-size: 18px; margin-top: 4px;">${match.layPrice.toFixed(2)}</span>
+                                </div>
+                            </div>
+                            <div class="odds-rating" style="color: ${ratingColor};">Rating: ${match.rating.toFixed(2)}%</div>
+                        </div>`;
+                });
+            }
+        } catch (error) {
+            container.innerHTML = `<p style="color: red; text-align: center;">${error.message}</p>`;
+        }
+    }
+
+    function findBestArbitrage(event, useStammdatenOnly) {
+        let bestBet = null;
+        let highestRating = 0;
+        let outcomesMap = {}; 
+
+        const userBookiesNormalized = bookies.map(b => b.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+        event.bookmakers.forEach(b => {
+            const isExchange = EXCHANGES.includes(b.key);
+            let isValidBackBookie = false;
+
+            if (useStammdatenOnly) {
+                const apiTitleNorm = b.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const apiKeyNorm = b.key.toLowerCase().replace(/[^a-z0-9]/g, '');
+                isValidBackBookie = userBookiesNormalized.some(ub => apiTitleNorm.includes(ub) || apiKeyNorm.includes(ub) || ub.includes(apiTitleNorm));
+            } else {
+                isValidBackBookie = GERMAN_BOOKIES.includes(b.key) || b.title.toLowerCase().includes('tipico');
+            }
+            
+            const h2h = b.markets.find(m => m.key === 'h2h');
+            if (h2h) {
+                h2h.outcomes.forEach(o => {
+                    if (!outcomesMap[o.name]) { outcomesMap[o.name] = { backOptions: [], lay: Infinity, lBook: '' }; }
+                    if (isExchange) {
+                        if (o.price < outcomesMap[o.name].lay) { outcomesMap[o.name].lay = o.price; outcomesMap[o.name].lBook = b.title; }
+                    } else if (isValidBackBookie) {
+                        outcomesMap[o.name].backOptions.push({ price: o.price, bookie: b.title });
+                    }
+                });
+            }
+        });
+
+        Object.keys(outcomesMap).forEach(outcomeName => {
+            const data = outcomesMap[outcomeName];
+            data.backOptions.sort((a, b) => b.price - a.price);
+
+            if (data.backOptions.length > 0) {
+                let bestBack = data.backOptions[0].price;
+                let simulatedLay = data.lay;
+                let layLabel = data.lBook;
+                
+                if (data.lay === Infinity) {
+                    simulatedLay = bestBack * 1.05; layLabel = "Exchange (Schätzung)";
+                } else {
+                    simulatedLay = data.lay + 0.02;
+                }
+
+                const rating = (bestBack / simulatedLay) * 100;
+                
+                if (rating > highestRating) {
+                    highestRating = rating;
+                    bestBet = {
+                        outcome: outcomeName, backOptions: data.backOptions.slice(0, 4), layPrice: simulatedLay, layBookie: layLabel, rating: rating, sportTitle: event.sport_title
+                    };
+                }
+            }
+        });
+
+        return bestBet ? { event: `${event.home_team} vs ${event.away_team}`, ...bestBet } : null;
+    }
+
+    window.onload = function() {
+        renderBookiesList(); updateBookieDropdown(); renderTeamsList(); updateTeamsDatalist(); initProfitBookFilters();
+        updateDateDisplay(); toggleMode();
+        document.querySelectorAll('input[name="matchSelection"]').forEach(r => r.checked = false);
+    };
+</script>
+
+</body>
+</html>
