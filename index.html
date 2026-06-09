@@ -45,6 +45,21 @@
             position: relative;
         }
 
+        /* App Header & Logo */
+        .app-header {
+            text-align: center;
+            padding: 20px 10px 10px;
+            background: var(--card-bg);
+        }
+        .app-logo {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            object-fit: cover;
+            border: 2px solid #e4e7eb;
+        }
+
         /* Tabs Navigation */
         .tabs {
             display: flex;
@@ -107,6 +122,31 @@
         .lay-section input#layCommission { background-color: rgba(255,255,255,0.6); border: 1px solid #89a7d8; }
         .unit-badge { position: absolute; right: 12px; font-size: 16px; font-weight: bold; color: #444; }
 
+        /* Custom Autocomplete Dropdown */
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+        .autocomplete-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+        }
+        .autocomplete-item:last-child { border-bottom: none; }
+        .autocomplete-item:active { background-color: #f0f2f5; }
+
         /* Radio Box Styles */
         .radio-box {
             display: flex; align-items: center; background: #fff;
@@ -129,7 +169,7 @@
         /* Match Layout (Teams + Radios) */
         .match-container { width: 100%; display: flex; flex-direction: column; gap: 8px; }
         .match-header-row { display: flex; width: 100%; align-items: center; }
-        .match-col-team { flex: 1; }
+        .match-col-team { flex: 1; position: relative; } /* position: relative wichtig für Dropdown! */
         .match-col-team input { width: 100%; }
         .match-col-vs { width: 24px; text-align: center; font-weight: bold; color: #555; }
         .match-radio-row { display: flex; width: 100%; align-items: center; margin-bottom: 2px; }
@@ -210,10 +250,12 @@
 </head>
 <body>
 
-<datalist id="teamsDatalist"></datalist>
-
 <div class="calculator-container">
     
+    <div class="app-header">
+        <img src="vtbs-logo.jpg" alt="VTBS App Logo" class="app-logo" onerror="this.style.display='none'">
+    </div>
+
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('rechner')">Rechner</button>
         <button class="tab-btn" onclick="switchTab('profitbuch')">Profitbuch</button>
@@ -260,9 +302,16 @@
                         <div class="match-radio-empty"></div>
                     </div>
                     <div class="match-header-row">
-                        <div class="match-col-team"><input type="text" id="team1" list="teamsDatalist" placeholder="Team 1"></div>
+                        <div class="match-col-team">
+                            <input type="text" id="team1" placeholder="Team 1" oninput="showSuggestions(this, 'team1Dropdown')" autocomplete="off">
+                            <div id="team1Dropdown" class="autocomplete-dropdown"></div>
+                        </div>
                         <div class="match-col-vs">:</div>
-                        <div class="match-col-team"><input type="text" id="team2" list="teamsDatalist" placeholder="Team 2"></div>
+                        <div class="match-col-team">
+                            <input type="text" id="team2" placeholder="Team 2" oninput="showSuggestions(this, 'team2Dropdown')" autocomplete="off">
+                            <div id="team2Dropdown" class="autocomplete-dropdown"></div>
+                        </div>
+                        
                         <div class="date-icon-container">
                             <div class="date-icon-btn">
                                 📅
@@ -406,7 +455,8 @@
             </div>
 
             <div class="input-wrapper full-width">
-                <input type="text" id="searchTeamInput" list="teamsDatalist" placeholder="Team (Optional, z.B. Bayern)">
+                <input type="text" id="searchTeamInput" placeholder="Team (Optional, z.B. Bayern)" oninput="showSuggestions(this, 'searchTeamDropdown')" autocomplete="off">
+                <div id="searchTeamDropdown" class="autocomplete-dropdown"></div>
             </div>
             
             <div class="input-wrapper full-width radio-box" style="justify-content: center; padding: 12px;">
@@ -518,7 +568,7 @@
     ];
 
     function saveBookies() { localStorage.setItem('mb_bookies', JSON.stringify(bookies)); renderBookiesList(); updateBookieDropdown(); }
-    function saveTeams() { localStorage.setItem('mb_teams', JSON.stringify(teamsData)); renderTeamsList(); updateTeamsDatalist(); }
+    function saveTeams() { localStorage.setItem('mb_teams', JSON.stringify(teamsData)); renderTeamsList(); }
 
     function addBookie() {
         const name = document.getElementById('newBookieName').value.trim();
@@ -564,15 +614,58 @@
             select.appendChild(option);
         });
     }
-    function updateTeamsDatalist() {
-        const datalist = document.getElementById('teamsDatalist'); datalist.innerHTML = "";
-        teamsData.forEach(team => { const option = document.createElement('option'); option.value = team.name; datalist.appendChild(option); });
-    }
+    
     function applyBookieTax() {
         const select = document.getElementById('bookieSelect'); const taxInput = document.getElementById('backCommission');
         if (select.selectedIndex > 0) { taxInput.value = select.options[select.selectedIndex].dataset.tax; }
         calculate();
     }
+
+    /* ==============================
+       Custom Autocomplete (Max 2 Items)
+       ============================== */
+    function showSuggestions(inputElement, dropdownId) {
+        const dropdown = document.getElementById(dropdownId);
+        const val = inputElement.value.toLowerCase().trim();
+        dropdown.innerHTML = '';
+        
+        if (val.length < 1) {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        // Suche in Stammdaten und limitiere auf 2 Ergebnisse
+        const matches = teamsData
+            .filter(t => t.name.toLowerCase().includes(val))
+            .slice(0, 2);
+
+        if (matches.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        matches.forEach(match => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.innerText = match.name;
+            item.onclick = function() {
+                inputElement.value = match.name;
+                dropdown.style.display = 'none';
+            };
+            dropdown.appendChild(item);
+        });
+
+        dropdown.style.display = 'block';
+    }
+
+    // Schließt das Dropdown, wenn man irgendwo anders hinklickt
+    document.addEventListener('click', function(e) {
+        if (!e.target.matches('#team1') && !e.target.matches('#team2') && !e.target.matches('#searchTeamInput')) {
+            document.getElementById('team1Dropdown').style.display = 'none';
+            document.getElementById('team2Dropdown').style.display = 'none';
+            if(document.getElementById('searchTeamDropdown')) document.getElementById('searchTeamDropdown').style.display = 'none';
+        }
+    });
 
     /* ==============================
        Rechner-Logik & EV
@@ -684,13 +777,12 @@
 
         let formattedTeams = "";
         
-        // NEU: Wenn keine Teams eingetragen sind, bleibt das Feld einfach komplett leer
         if (team1 !== "" || team2 !== "") {
             let t1Display = team1 || "?"; 
             let t2Display = team2 || "?";
             if (matchSelection === '1') { formattedTeams = `<strong>${t1Display}</strong> vs ${t2Display}`; } 
             else if (matchSelection === '2') { formattedTeams = `${t1Display} vs <strong>${t2Display}</strong>`; } 
-            else if (matchSelection === 'X') { formattedTeams = `${t1Display} <strong>vs (Unentschieden)</strong> ${t2Display}`; }
+            else if (matchSelection === 'X') { formattedTeams = `${t1Display} <strong>X</strong> ${t2Display}`; }
             else { formattedTeams = `${t1Display} vs ${t2Display}`; }
         }
 
@@ -758,7 +850,6 @@
                 
                 const bookieString = entry.bookie ? ` | ${entry.bookie}` : "";
                 
-                // Leeres Team-Feld gar nicht erst als Platzhalter ins HTML rendern
                 const teamsHtml = entry.teamsFormatted ? `<span class="pb-teams-title">${entry.teamsFormatted}</span>` : `<span class="pb-teams-title"></span>`;
 
                 const li = document.createElement('li'); li.className = 'data-item'; li.style.display = 'block';
@@ -959,7 +1050,7 @@
     }
 
     window.onload = function() {
-        renderBookiesList(); updateBookieDropdown(); renderTeamsList(); updateTeamsDatalist(); initProfitBookFilters();
+        renderBookiesList(); updateBookieDropdown(); renderTeamsList();
         updateDateDisplay(); toggleMode();
         document.querySelectorAll('input[name="matchSelection"]').forEach(r => r.checked = false);
     };
